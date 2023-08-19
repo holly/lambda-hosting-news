@@ -47,6 +47,20 @@ SERVICES = {
             "s3_key": "xserver_business_news.json",
             "selector": "#main > section > div > section > div > dl"
         },
+        "lolipop": {
+            "executor": "bs4",
+            "base_url": "https://lolipop.jp",
+            "news_url": "https://lolipop.jp/info/news/",
+            "s3_key": "lolipop_news.json",
+            "selector": "main > div > div.main-body > section > div > div > ul > li.lol-info-contents__item"
+        },
+        "lolipop_campaign": {
+            "executor": "bs4",
+            "news_url": "https://lolipop.jp/info/campaign/",
+            "base_url": "https://lolipop.jp",
+            "s3_key": "lolipop_campaign.json",
+            "selector": "main > div > div.main-body > section > div > div > ul > li.lol-info-contents__item"
+        },
         "sakura_news": {
             "executor": "feedparser",
             "news_url": "https://www.sakura.ad.jp/corporate/information/newsreleases/feed/",
@@ -141,14 +155,12 @@ def get_news_by_bs4(news_url, **kwargs):
         url   = None
         data  = None
         if kwargs["service"] == "conoha_wing":
-
             date  = elem.find("div", class_="listNewsUnit_date").text.strip()
             title = elem.find("span", class_="textLink has-arrow textColor-inherit has-noHover").text.strip()
             href  = elem.find("a", class_="listNewsUnit").get("href")
             url   = kwargs["base_url"] + href
 
         elif kwargs["service"] == "muumuu_news" or kwargs["service"] == "muumuu_campaign" :
-
             # date
             p = elem.find("p", class_="muu-section__date")
             if p is None:
@@ -161,7 +173,6 @@ def get_news_by_bs4(news_url, **kwargs):
             url  = kwargs["base_url"] + href
 
         elif kwargs["service"] == "xserver" or kwargs["service"] == "xserver_business" :
-
             # date
             date = elem.dt.text
             elems2 = elem.find_all("a")
@@ -169,6 +180,12 @@ def get_news_by_bs4(news_url, **kwargs):
                 href  = elem2.get("href")
                 url   = kwargs["base_url"] + href.replace("..", "") if kwargs["service"] == "xserver" else news_url + href
                 title = elem2.text
+
+        elif kwargs["service"] == "lolipop" or kwargs["service"] == "lolipop_campaign" :
+            date = elem.find("time", class_="lol-info-list__date").text.strip()
+            title = elem.find("span", class_="lol-info-item__title").text.strip()
+            a = elem.select("p.lol-info-accordion-panel__link > a")[-1]
+            url  = kwargs["base_url"] + a.get("href")
 
         data = {"date": date, "url": url, "title": title}
         news.append(data)
@@ -203,6 +220,8 @@ def lambda_handler(event, context):
     body   = {}
 
     for service in SERVICES.keys():
+
+        print("{0} parser start".format(service))
 
         key      = SERVICES[service]["s3_key"]
         news_url = SERVICES[service]["news_url"]
@@ -239,6 +258,8 @@ def lambda_handler(event, context):
         s3.put_object(Body=json_string.encode("utf-8"), Bucket=bucket, Key=key)
 
         body[service] = { "update": count }
+
+        print("{0} parser end".format(service))
 
     return {
         'statusCode': 200,
