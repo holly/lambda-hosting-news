@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  lambda-python:
+    build: .
+    image: holly/hosting-news
+    ports:
+      - 9000:8080
+    restart: always
+    env_file:
+      - .env
