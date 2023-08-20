@@ -78,7 +78,14 @@ SERVICES = {
             "news_url": "https://mixhost.jp/news/feed",
             "s3_key": "mixhost_news.json",
             "tags": [ "お知らせ" ]
+        },
+        "onamae_news": {
+            "executor": "feedparser",
+            "news_url": "https://www.onamae.com/news/rss/domain/",
+            "s3_key": "onamae_news.json",
+            "tags": []
         }
+ 
     }
 
 SLACK_MESSAGE = "{date} <{url}|{title}>"
@@ -88,6 +95,9 @@ def conv_time_struct_time_to_datetime(struct_time):
     tz = pytz.timezone("Asia/Tokyo")
     return datetime.datetime(*struct_time[:6], tzinfo=pytz.utc).astimezone(tz)
 
+def conv_str_to_datetime(s):
+    # 'Wed, 24 May 2023 00:00:00 +0900'
+    return datetime.datetime.strptime(s, "%a, %d %b %Y %H:%M:%S %z")
 
 def exists_states(check_data, states):
 
@@ -99,6 +109,9 @@ def exists_states(check_data, states):
 
 
 def exists_feed_tags(tags, check_tags):
+
+    if type(check_tags).__name__ != "list":
+        return False
 
     for check_tag in check_tags:
         for tag in tags:
@@ -199,13 +212,19 @@ def get_news_by_feedparser(news_url, **kwargs):
 
     for entry in atom["entries"]:
 
-        if not exists_feed_tags(entry["tags"], kwargs["tags"]):
-            continue
+        if "tags" in entry:
+            if type(kwargs["tags"]).__name__ == "list" and  not exists_feed_tags(entry["tags"], kwargs["tags"]):
+                continue
 
         title  = entry["title"]
-        dt     = conv_time_struct_time_to_datetime(entry["published_parsed"])
         url    = entry["link"]
-        date   = dt.strftime("%Y-%m-%d")
+
+        if "published_parsed" in entry :
+            dt    = conv_time_struct_time_to_datetime(entry["published_parsed"])
+            date  = dt.strftime("%Y-%m-%d")
+        elif "updated" in entry:
+            dt = conv_str_to_datetime(entry["updated"])
+            date  = dt.strftime("%Y-%m-%d")
 
         data = {"date": date, "url": url, "title": title}
         news.append(data)
