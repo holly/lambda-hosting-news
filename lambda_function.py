@@ -47,6 +47,13 @@ SERVICES = {
             "s3_key": "xserver_business_news.json",
             "selector": "#main > section > div > section > div > dl"
         },
+        "xdomain": {
+            "executor": "bs4",
+            "base_url": "https://www.xdomain.ne.jp",
+            "news_url": "https://www.xdomain.ne.jp/support/news.php",
+            "s3_key": "xdomain_news.json",
+            "selector": "main > section > div > article > ul > li"
+        },
         "lolipop": {
             "executor": "bs4",
             "base_url": "https://lolipop.jp",
@@ -193,6 +200,11 @@ def get_news_by_bs4(news_url, **kwargs):
                 href  = elem2.get("href")
                 url   = kwargs["base_url"] + href.replace("..", "") if kwargs["service"] == "xserver" else news_url + href
                 title = elem2.text
+        elif kwargs["service"] == "xdomain" :
+            date = elem.find("span", class_="date century").text
+            a = elem.find("a", class_="hover-opacity")
+            title = a.text.strip()
+            url   = a.get("href")
 
         elif kwargs["service"] == "lolipop" or kwargs["service"] == "lolipop_campaign" :
             date = elem.find("time", class_="lol-info-list__date").text.strip()
@@ -221,11 +233,10 @@ def get_news_by_feedparser(news_url, **kwargs):
 
         if "published_parsed" in entry :
             dt    = conv_time_struct_time_to_datetime(entry["published_parsed"])
-            date  = dt.strftime("%Y-%m-%d")
         elif "updated" in entry:
             dt = conv_str_to_datetime(entry["updated"])
-            date  = dt.strftime("%Y-%m-%d")
 
+        date  = dt.strftime("%Y-%m-%d")
         data = {"date": date, "url": url, "title": title}
         news.append(data)
 
@@ -269,6 +280,7 @@ def lambda_handler(event, context):
         count = len(notifications)
         if count > 0 and "SLACK_WEBHOOK_URL" in os.environ:
            send_to_slack(service, notifications)
+           #pass
         else:
            print("{0} skip slack notification.".format(service))
 
