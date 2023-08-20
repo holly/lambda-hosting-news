@@ -47,6 +47,13 @@ SERVICES = {
             "s3_key": "xserver_business_news.json",
             "selector": "#main > section > div > section > div > dl"
         },
+        "xserver_ssl": {
+            "executor": "bs4",
+            "base_url": "https://ssl.xdomain.ne.jp",
+            "news_url": "https://ssl.xdomain.ne.jp/news/",
+            "s3_key": "xserver_ssl_news.json",
+            "selector": "main > section > div > article > ul > li"
+        },
         "xdomain": {
             "executor": "bs4",
             "base_url": "https://www.xdomain.ne.jp",
@@ -200,7 +207,7 @@ def get_news_by_bs4(news_url, **kwargs):
                 href  = elem2.get("href")
                 url   = kwargs["base_url"] + href.replace("..", "") if kwargs["service"] == "xserver" else news_url + href
                 title = elem2.text
-        elif kwargs["service"] == "xdomain" :
+        elif kwargs["service"] == "xdomain" or kwargs["service"] == "xserver_ssl" :
             date = elem.find("span", class_="date century").text
             a = elem.find("a", class_="hover-opacity")
             title = a.text.strip()
